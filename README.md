@@ -151,24 +151,6 @@ Re-do steps 1–2 only when you change the hookscript/bootstrap or
 > Verified: `tofu apply` succeeds even with the provider's SSH pointed at a
 > closed port — i.e. it makes **zero** SSH connections.
 
-## Design notes
-
-- **One layer.** Creation and configuration both happen in a single
-  `tofu apply`; the pre-staged hookscript runs the embedded bootstrap at first
-  start.
-- **No SSH.** The only operations that would need node SSH (snippet upload,
-  `idmap`) are not used, so the provider is API-only.
-- **Scale by data.** Add a container by adding one entry to the `containers`
-  map (`for_each` keyed by hostname). Existing containers are untouched.
-- **Persistence.** `/projects` is a dedicated PVE volume (default `5G`). It
-  survives restarts; volumes can **grow but not shrink**.
-- **Re-applying.** Edits to the hookscript take effect on the next container
-  **restart** (the `post-start` hook re-runs); the in-container script is
-  idempotent via `/root/.bootstrapped`. Re-render and re-paste the hookscript
-  first (see *No-SSH deployment*).
-- **IPs.** Static, assigned from the map (mini-IPAM as code); access by DNS
-  name where possible.
-
 ## Troubleshooting
 
 | Symptom | Likely cause → fix |
