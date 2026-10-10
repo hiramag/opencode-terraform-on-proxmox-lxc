@@ -14,7 +14,7 @@ pre-staged on the node and run by Proxmox at container `post-start`.
 
 ```bash
 # 0. Prereqs: PVE root password; a snippets-capable storage; a Debian 12 LXC
-#    template (see docs/prerequisites.md §2 — one-time, ~10 min).
+#    template (one-time, ~10 min).
 ./configure.sh                                 # interactive: writes terraform.tfvars
 tofu init
 
@@ -27,9 +27,7 @@ tofu apply
 tofu output
 ```
 
-> Prefer it unattended? `./deploy.sh` runs the whole flow end to end. The
-> **zero-assumption first-time setup** lives in
-> [`docs/prerequisites.md`](docs/prerequisites.md) §2.
+> Prefer it unattended? `./deploy.sh` runs the whole flow end to end.
 
 ## Layout
 
@@ -39,37 +37,24 @@ tofu output
 ├─ prestage/opencode-hookscript.sh  # rendered output to paste onto the node (gitignored)
 ├─ deploy.sh                        # non-interactive end-to-end run of the steps below
 ├─ configure.sh                     # interactive wizard that writes terraform.tfvars
-├─ docs/
-│  ├─ prerequisites.md              # from-scratch checklist + engineering log (EC-n/D-n/G-n)
-│  └─ plan.md                       # design blueprint and rationale (background)
 ├─ versions.tf / provider.tf / variables.tf / main.tf / outputs.tf
 ├─ terraform.tfvars.example
 ├─ LICENSE
 └─ .gitignore / .gitattributes
 ```
 
-## Documentation map
-
-| Doc | Read it for |
-| --- | --- |
-| **this README** | what it is, quick start, usage, troubleshooting, security |
-| **[`docs/prerequisites.md`](docs/prerequisites.md)** | **first-time setup** (§2 checklist) + the decision/change log (EC-n, D-n, G-n) |
-| **[`docs/plan.md`](docs/plan.md)** | the design blueprint and rationale (background reading) |
-
 ## Prerequisites
 
 - **Proxmox VE 8.x or 9.x** host reachable over HTTPS on `:8006`, and its
   **root password** (the provider authenticates the API as `root@pam` — API only).
 - A rootfs datastore (`local-lvm`) and a template datastore (`local`).
-- **`snippets` content enabled** on the snippet datastore — see
-  `docs/prerequisites.md` (EC-1). *Not enabled by default on many hosts.*
+- **`snippets` content enabled** on the snippet datastore —
+  `pvesm set <store> --content vztmpl,backup,iso,snippets`. *Not enabled by
+  default on many hosts.*
 - **A way to place one file on the node, once** — e.g. the Proxmox **web
   console** (browser xterm, no SSH). Used to pre-stage the hookscript.
 - A Debian 12 LXC template (e.g. `local:vztmpl/debian-12-standard_*.tar.zst`).
 - The container's static IP must be free and **outside the DHCP pool**.
-
-> Full **zero-assumption, from-scratch** checklist — storages, template, auth,
-> and the `opencode-deploy` token question: `docs/prerequisites.md` §2.
 
 ## Secrets — what to supply, and where
 
@@ -164,8 +149,7 @@ Re-do steps 1–2 only when you change the hookscript/bootstrap or
 `opencode_password` (the rendered file embeds it).
 
 > Verified: `tofu apply` succeeds even with the provider's SSH pointed at a
-> closed port — i.e. it makes **zero** SSH connections. See D-19 in
-> `docs/prerequisites.md`.
+> closed port — i.e. it makes **zero** SSH connections.
 
 ## Design notes
 
@@ -173,7 +157,7 @@ Re-do steps 1–2 only when you change the hookscript/bootstrap or
   `tofu apply`; the pre-staged hookscript runs the embedded bootstrap at first
   start.
 - **No SSH.** The only operations that would need node SSH (snippet upload,
-  `idmap`) are not used, so the provider is API-only (D-19).
+  `idmap`) are not used, so the provider is API-only.
 - **Scale by data.** Add a container by adding one entry to the `containers`
   map (`for_each` keyed by hostname). Existing containers are untouched.
 - **Persistence.** `/projects` is a dedicated PVE volume (default `5G`). It
@@ -189,13 +173,13 @@ Re-do steps 1–2 only when you change the hookscript/bootstrap or
 
 | Symptom | Likely cause → fix |
 | --- | --- |
-| `template ... not found` / create fails on storage | Debian 12 template or datastore missing → `docs/prerequisites.md` §2.2–2.3 |
-| `changing the hookscript is only allowed for root@pam` | API **token** used → auth must be `root@pam` **password** (D-17 / G-1) |
-| `storage 'local' does not support content type 'snippets'` | snippets not enabled → `pvesm set local --content vztmpl,backup,iso,snippets` (EC-1) |
+| `template ... not found` / create fails on storage | Debian 12 template or datastore missing → download it (`pveam available` / `pveam download`) and check the datastore name |
+| `changing the hookscript is only allowed for root@pam` | API **token** used → auth must be `root@pam` **password** |
+| `storage 'local' does not support content type 'snippets'` | snippets not enabled → `pvesm set <store> --content vztmpl,backup,iso,snippets` |
 | Container is up but `curl :4096` fails | bootstrap still running (cold ~60–90 s) or no internet from the CT → check `/var/log/opencode-bootstrap.log` inside it |
 | Hook never runs on restart | idempotency marker `/root/.bootstrapped` is set; to re-run, edit the template → **re-render + re-paste** the snippet, then restart |
-| Odd `lxc-attach` / `pct` failures from the hook | see Gotchas **G-1…G-6** in `docs/prerequisites.md` §8 |
-| A password showed up in a log | `TF_LOG=DEBUG/TRACE` was set → don't (G-6); rotate the password |
+| Odd `lxc-attach` / `pct` failures from the hook | the hook runs on the node via `lxc-attach`; check `/var/log/opencode-bootstrap.log` in the container |
+| A password showed up in a log | `TF_LOG=DEBUG/TRACE` was set → don't; rotate the password |
 
 ## Security considerations
 
@@ -209,7 +193,7 @@ Deliberate trade-offs — know them before exposing this to a network:
   (`/etc/systemd/system/opencode.service`, world-readable). Prefer a mode-`0600`
   `EnvironmentFile` if that matters to you.
 - **`pve_password` is a powerful secret.** Keep `terraform.tfvars` `chmod 600`;
-  never enable `TF_LOG` (G-6); and note that both it (as the API credential) and
+  never enable `TF_LOG`; and note that both it (as the API credential) and
   `ct_root_password` land in the OpenTofu **state** file in plaintext. Keep
   `terraform.tfstate` and `prestage/` root-only, and delete them when done.
 - The container's **nftables** rule drops everything except `lan_cidr` →
