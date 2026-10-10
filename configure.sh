@@ -71,7 +71,7 @@ valid_hostname() {
   [[ "$1" =~ ^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?$ ]]
 }
 
-# network address for <ip> <prefix>, e.g. 192.168.1.9 24 -> 192.168.1.0/24
+# network address for <ip> <prefix>, e.g. 10.10.10.9 24 -> 10.10.10.0/24
 lan_cidr_from() {
   local ip="$1" prefix="$2"; local -a oct
   IFS='.' read -ra oct <<< "$ip"
@@ -110,7 +110,7 @@ fi
 # --- 1. Proxmox connection -------------------------------------------------
 note "Proxmox connection"
 info "Tip: find the node name in the PVE UI under Datacenter > <node>."
-PVE_ENDPOINT="$(ask "PVE API endpoint URL" "https://192.168.1.8:8006/")"
+PVE_ENDPOINT="$(ask "PVE API endpoint URL" "https://10.10.10.8:8006/")"
 PVE_NODE="$(ask "PVE node name" "proxdev")"
 while :; do
   PVE_PASSWORD="$(ask_secret "PVE root password (auth as root@pam)")"
@@ -127,7 +127,7 @@ while :; do
 done
 
 while :; do
-  CT_IP="$(ask "Container IP address (e.g. 192.168.1.9)" "")"
+  CT_IP="$(ask "Container IP address (e.g. 10.10.10.9)" "")"
   [ -n "$CT_IP" ] || { printf '  required\n' >&2; continue; }
   CT_IP="${CT_IP%%/*}"                 # tolerate a user typing a /prefix
   valid_ipv4 "$CT_IP" && break
@@ -175,7 +175,7 @@ umask 077
 
   printf 'pve_endpoint = "%s"\n' "$(hcl_escape "$PVE_ENDPOINT")"
   printf 'pve_node     = "%s"\n' "$(hcl_escape "$PVE_NODE")"
-  printf '# pve_username = "root@pam"    # must stay root@pam (D-17)\n\n'
+  printf '# pve_username = "root@pam"    # must stay root@pam\n\n'
 
   printf 'containers = {\n'
   printf '  "%s" = {\n' "$CT_HOST"

@@ -1,17 +1,17 @@
 variable "pve_endpoint" {
   description = "Proxmox VE API endpoint URL."
   type        = string
-  default     = "https://192.168.1.8:8006/"
+  default     = "https://10.10.10.8:8006/"
 }
 
 variable "pve_username" {
-  description = "Proxmox API username for username/password auth. Must resolve to 'root@pam' to assign a hookscript (D-17)."
+  description = "Proxmox API username for username/password auth. Must resolve to 'root@pam' to assign a hookscript."
   type        = string
   default     = "root@pam"
 }
 
 variable "pve_password" {
-  description = "PVE host root password for pve_username (root@pam). Used for the Proxmox API connection only (D-19: the deployment needs no SSH). This is the ONE secret you must supply."
+  description = "PVE host root password for pve_username (root@pam). Used for the Proxmox API connection only; the deployment needs no SSH. This is the ONE secret you must supply."
   type        = string
   sensitive   = true
 }
@@ -33,7 +33,7 @@ variable "containers" {
   }))
   default = {
     opencodev1 = {
-      ip = "192.168.1.9/24"
+      ip = "10.10.10.9/24"
     }
   }
 }
@@ -65,13 +65,13 @@ variable "ct_bridge" {
 variable "ct_gateway" {
   description = "Default gateway for the container."
   type        = string
-  default     = "192.168.1.1"
+  default     = "10.10.10.1"
 }
 
 variable "ct_dns" {
   description = "DNS servers for the container."
   type        = list(string)
-  default     = ["192.168.1.1"]
+  default     = ["10.10.10.1"]
 }
 
 variable "ct_root_password" {
@@ -95,7 +95,7 @@ variable "opencode_port" {
 variable "lan_cidr" {
   description = "LAN CIDR allowed to reach the OpenCode port (nftables rule)."
   type        = string
-  default     = "192.168.1.0/24"
+  default     = "10.10.10.0/24"
 }
 
 variable "snippets_datastore" {

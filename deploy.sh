@@ -16,7 +16,8 @@
 #                                   TF_VAR_opencode_password
 #
 # Optional overrides:
-#   PVE_NODE=192.168.1.8            Proxmox host (for the snippet scp)
+#   PVE_NODE=<host>                 Proxmox host for the snippet scp
+#                                   (default: derived from pve_endpoint)
 #   PVE_NODE_USER=root
 #   SNIP_DIR=/var/lib/vz/snippets   dir backing the 'snippets' datastore
 #   NO_SSH=1                        skip the scp; paste the snippet via the
@@ -24,14 +25,13 @@
 #
 # Gotchas baked in (learned during the build):
 #   * always run from the repo — the script cd's there itself;
-#   * never set TF_LOG=DEBUG/TRACE — it logs the API password in cleartext (G-6).
+#   * never set TF_LOG=DEBUG/TRACE — it logs the API password in cleartext.
 # ---------------------------------------------------------------------------
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$REPO_DIR"
 
-PVE_NODE="${PVE_NODE:-192.168.1.8}"
 PVE_NODE_USER="${PVE_NODE_USER:-root}"
 SNIP_DIR="${SNIP_DIR:-/var/lib/vz/snippets}"
 SNIPPET="opencode-hookscript.sh"
@@ -44,6 +44,13 @@ read_tfvar() {
   [ -f terraform.tfvars ] || return 1
   sed -nE "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*\"([^\"]*)\".*/\1/p" terraform.tfvars | head -1
 }
+
+# Proxmox host for the one-time snippet scp (step 3). Honour an explicit
+# PVE_NODE, otherwise derive it from pve_endpoint in terraform.tfvars
+# (https://10.10.10.8:8006/ -> 10.10.10.8). Unused when NO_SSH=1.
+if [ -z "${PVE_NODE:-}" ]; then
+  PVE_NODE="$(read_tfvar pve_endpoint 2>/dev/null | sed -E 's#^https?://##; s#[:/].*$##' || true)"
+fi
 
 # --- 0. preconditions ------------------------------------------------------
 note "0. preconditions"
@@ -72,6 +79,7 @@ PVE_PW="${TF_VAR_pve_password:-$(read_tfvar pve_password || true)}"
 [ -n "$PVE_PW" ] || die "could not determine pve_password (env or terraform.tfvars)"
 if [ "${NO_SSH:-0}" != "1" ]; then
   command -v sshpass >/dev/null || die "sshpass not found (needed for the snippet scp); set NO_SSH=1 to paste by hand"
+  [ -n "$PVE_NODE" ] || die "no Proxmox host: set PVE_NODE=<host> or add pve_endpoint to terraform.tfvars (or set NO_SSH=1)"
 fi
 
 # --- 1. init + validate (registry only, no node contact) -------------------

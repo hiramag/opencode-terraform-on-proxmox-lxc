@@ -5,20 +5,20 @@
 #
 # Only THREE values are required — the secrets at the very bottom. Everything
 # else has a working default; uncomment a line to override it. If your LAN is
-# NOT 192.168.1.0/24, you will want to change the network entries below.
+# NOT 10.10.10.0/24, you will want to change the network entries below.
 # ===========================================================================
 
 # --- Proxmox connection ----------------------------------------------------
-pve_endpoint = "https://192.168.1.8:8006/"   # your PVE host, API port 8006
+pve_endpoint = "https://10.10.10.8:8006/"    # your PVE host, API port 8006
 pve_node     = "proxdev"                     # node name (PVE: Datacenter > node)
-# pve_username = "root@pam"                  # must stay root@pam — D-17
+# pve_username = "root@pam"                  # must stay root@pam
 
 # --- Container(s) ----------------------------------------------------------
 # Key = hostname (stable identity). Add an entry to add a container; existing
 # ones are untouched. The IP must be free and OUTSIDE your router's DHCP pool.
 containers = {
   opencodev1 = {
-    ip = "192.168.1.9/24"
+    ip = "10.10.10.9/24"
     # cores         = 2
     # memory        = 4096        # MB
     # swap          = 512         # MB
@@ -27,15 +27,15 @@ containers = {
 }
 
 # --- Network ---------------------------------------------------------------
-# ct_gateway = "192.168.1.1"
-# ct_dns     = ["192.168.1.1"]
+# ct_gateway = "10.10.10.1"
+# ct_dns     = ["10.10.10.1"]
 # ct_bridge  = "vmbr0"
-# lan_cidr   = "192.168.1.0/24"     # LAN allowed to reach OpenCode + SSH
+# lan_cidr   = "10.10.10.0/24"      # LAN allowed to reach OpenCode + SSH
 
 # --- Storage ---------------------------------------------------------------
 # ct_disk_datastore = "local-lvm"   # container rootfs + /projects volume
 # ct_disk_size      = 8             # GB (rootfs)
-# snippets_datastore = "local"      # must allow 'snippets' content (EC-1)
+# snippets_datastore = "local"      # must allow 'snippets' content
 # ct_template_file_id = "local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst"
 
 # --- Container behaviour ---------------------------------------------------
@@ -49,7 +49,7 @@ containers = {
 # SECRETS — the only three values you MUST supply
 # ===========================================================================
 # PVE host root password. Authenticates the API as root@pam (required to assign
-# the container hookscript; API tokens are rejected — D-17). API only, no SSH.
+# the container hookscript; API tokens are rejected). API only, no SSH.
 pve_password      = "CHANGE_ME_PVE_ROOT_PASSWORD"
 
 # Root password for the new container (root SSH + console login).

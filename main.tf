@@ -8,7 +8,7 @@
 # it stays in sync with the current variables.
 #
 # Pre-staging is a deliberate one-time manual step; see README.md
-# ("No-SSH deployment") and docs/prerequisites.md (D-19).
+# ("No-SSH deployment").
 # ---------------------------------------------------------------------------
 locals {
   # Volume ID of the pre-staged hookscript (datastore:snippets/<filename>).
