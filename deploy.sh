@@ -10,10 +10,10 @@
 #   4. tofu apply — creates the container; the bootstrap runs at post-start
 #   5. verify OpenCode answers HTTP 200 on the container
 #
-# Required (export before running):
-#   TF_VAR_pve_password       PVE root password (API auth as root@pam; D-17)
-#   TF_VAR_ct_root_password   container root password
-#   TF_VAR_opencode_password  OpenCode service password
+# Secrets come from either source (tofu reads both automatically):
+#   * terraform.tfvars            — written by ./configure.sh (recommended)
+#   * TF_VAR_* environment vars   — TF_VAR_pve_password, TF_VAR_ct_root_password,
+#                                   TF_VAR_opencode_password
 #
 # Optional overrides:
 #   PVE_NODE=192.168.1.8            Proxmox host (for the snippet scp)
@@ -39,15 +39,37 @@ SNIPPET="opencode-hookscript.sh"
 note() { printf '\n=== %s ===\n' "$*"; }
 die()  { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
+# read_tfvar <name> -> prints a simple string value from terraform.tfvars, if set
+read_tfvar() {
+  [ -f terraform.tfvars ] || return 1
+  sed -nE "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*\"([^\"]*)\".*/\1/p" terraform.tfvars | head -1
+}
+
 # --- 0. preconditions ------------------------------------------------------
 note "0. preconditions"
-for v in pve_password ct_root_password opencode_password; do
-  name="TF_VAR_$v"
-  [ -n "${!name:-}" ] || die "$name is unset — export it (see README 'Secrets')"
-  printf '  %s: set\n' "$name"
-done
 command -v tofu >/dev/null || die "tofu not found in PATH"
 command -v curl >/dev/null || die "curl not found in PATH"
+
+# Secrets may come from the environment (TF_VAR_*) or from terraform.tfvars.
+if [ -f terraform.tfvars ]; then
+  printf '  configuration: terraform.tfvars\n'
+else
+  printf '  configuration: TF_VAR_* environment variables\n'
+fi
+for v in pve_password ct_root_password opencode_password; do
+  name="TF_VAR_$v"
+  if [ -n "${!name:-}" ]; then
+    printf '  %s: set (env)\n' "$name"
+  elif [ -n "$(read_tfvar "$v" || true)" ]; then
+    printf '  %s: from terraform.tfvars\n' "$v"
+  else
+    die "$name is unset and not in terraform.tfvars — run ./configure.sh or export it"
+  fi
+done
+
+# The one-time snippet scp (step 3) needs the PVE password in the clear.
+PVE_PW="${TF_VAR_pve_password:-$(read_tfvar pve_password || true)}"
+[ -n "$PVE_PW" ] || die "could not determine pve_password (env or terraform.tfvars)"
 if [ "${NO_SSH:-0}" != "1" ]; then
   command -v sshpass >/dev/null || die "sshpass not found (needed for the snippet scp); set NO_SSH=1 to paste by hand"
 fi
@@ -69,7 +91,7 @@ if [ "${NO_SSH:-0}" = "1" ]; then
     "$REPO_DIR" "$SNIPPET" "$SNIP_DIR" "$SNIPPET"
   read -r -p "  press Enter when it is in place... " _
 else
-  export SSHPASS="$TF_VAR_pve_password"   # keep the password out of argv (ps)
+  export SSHPASS="$PVE_PW"   # keep the password out of argv (ps)
   sshpass -e ssh -o StrictHostKeyChecking=accept-new "$PVE_NODE_USER@$PVE_NODE" "mkdir -p '$SNIP_DIR'"
   sshpass -e scp -o StrictHostKeyChecking=accept-new "prestage/$SNIPPET" \
     "$PVE_NODE_USER@$PVE_NODE:$SNIP_DIR/$SNIPPET"

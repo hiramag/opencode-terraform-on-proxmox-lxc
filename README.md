@@ -15,8 +15,7 @@ pre-staged on the node and run by Proxmox at container `post-start`.
 ```bash
 # 0. Prereqs: PVE root password; a snippets-capable storage; a Debian 12 LXC
 #    template (see docs/prerequisites.md §2 — one-time, ~10 min).
-cp terraform.tfvars.example terraform.tfvars   # 3 secrets + your network values
-chmod 600 terraform.tfvars
+./configure.sh                                 # interactive: writes terraform.tfvars
 tofu init
 
 # 1. Render the hookscript and pre-stage it on the node ONCE:
@@ -39,6 +38,7 @@ tofu output
 ├─ snippets/hookscript.sh.tftpl     # host hook + in-container bootstrap (rendered by TF)
 ├─ prestage/opencode-hookscript.sh  # rendered output to paste onto the node (gitignored)
 ├─ deploy.sh                        # non-interactive end-to-end run of the steps below
+├─ configure.sh                     # interactive wizard that writes terraform.tfvars
 ├─ docs/
 │  ├─ prerequisites.md              # from-scratch checklist + engineering log (EC-n/D-n/G-n)
 │  └─ plan.md                       # design blueprint and rationale (background)
@@ -73,11 +73,15 @@ tofu output
 
 ## Secrets — what to supply, and where
 
-**Everything goes in `terraform.tfvars`.** Create it from the example:
+**Everything goes in `terraform.tfvars`.** The easiest way to create it is the
+wizard, which asks for the required values and derives the gateway/DNS/firewall
+range for you:
 
 ```bash
-cp terraform.tfvars.example terraform.tfvars
+./configure.sh
 ```
+
+Prefer to do it by hand? `cp terraform.tfvars.example terraform.tfvars` and edit.
 
 | Variable in `terraform.tfvars` | What it is | Who supplies it |
 | --- | --- | --- |
@@ -103,8 +107,25 @@ tofu apply
 
 ## Usage
 
+Two scripts do the work, and they have different jobs:
+
+| Script | What it does | Network? |
+| --- | --- | --- |
+| `./configure.sh` | Asks for your values (PVE + container + passwords) and **writes `terraform.tfvars`**. Creates nothing. | No |
+| `./deploy.sh` | **Reads `terraform.tfvars`** and builds the container end to end (init → render → pre-stage → apply → verify). | Yes |
+
+So normally you just run them in order:
+
 ```bash
-cp terraform.tfvars.example terraform.tfvars   # fill in secrets
+./configure.sh     # answer the questions -> terraform.tfvars
+./deploy.sh        # create the container from those values
+```
+
+Or do the steps by hand:
+
+```bash
+./configure.sh                                 # writes terraform.tfvars; or copy
+                                               # terraform.tfvars.example by hand
 tofu init
 
 # 1) Render the hookscript and pre-stage it on the node (one-time):
