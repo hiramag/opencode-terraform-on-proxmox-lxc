@@ -1,0 +1,158 @@
+#!/usr/bin/env bash
+# ===========================================================================
+# OpenCode LXC hookscript  --  SELF-CONTAINED  (rendered by OpenTofu)
+# ===========================================================================
+# Rendered by OpenTofu from snippets/hookscript.sh.tftpl.
+#
+# This ONE file contains both halves of the container configuration:
+#   1. the host-side hook Proxmox runs at "post-start", and
+#   2. the in-container bootstrap it delivers and executes.
+#
+# It is deliberately NOT uploaded by OpenTofu. The Proxmox API cannot write to
+# a "snippets" datastore, so Terraform would otherwise need SSH just to place
+# this file. Instead it is pre-staged on the node ONCE via the Proxmox web
+# console (no SSH), and referenced by ID from the container resource.
+#
+# Pre-stage on the PVE node (Datacenter > node > Shell):
+#   mkdir -p /var/lib/vz/snippets
+#   cat > /var/lib/vz/snippets/opencode-hookscript.sh    # paste, then Ctrl-D
+#   chmod 0700 /var/lib/vz/snippets/opencode-hookscript.sh
+#
+# Proxmox invokes it as:  hookscript.sh <vmid> <phase>
+#
+# NOTE: we use `lxc-attach`, not `pct push`/`pct exec`: PVE holds the container
+# config lock for the whole start task, and lock-taking pct subcommands
+# deadlock inside a post-start hook.
+# ===========================================================================
+set -eo pipefail
+
+VMID=$1
+PHASE=$2
+LOG=/var/log/opencode-hookscript.log
+
+log() { echo "$(date '+%Y-%m-%d %H:%M:%S') [vmid=$VMID phase=$PHASE] $*" >>"$LOG"; }
+
+# Only act after the container has started.
+[ "$PHASE" = "post-start" ] || exit 0
+[ -n "$VMID" ] || { log "no vmid supplied; aborting"; exit 1; }
+
+log "post-start: begin"
+
+# Idempotency: skip if the container has already been bootstrapped.
+if lxc-attach -n "$VMID" -- test -f /root/.bootstrapped 2>/dev/null; then
+  log "already bootstrapped; skipping"
+  exit 0
+fi
+
+# Deliver the in-container bootstrap over stdin (no config lock needed), then
+# run it synchronously so the container is fully configured when start ends.
+log "delivering bootstrap"
+if ! lxc-attach -n "$VMID" -- sh -c 'cat > /root/opencode-bootstrap.sh && chmod 0700 /root/opencode-bootstrap.sh' <<'OPENCODE_BOOTSTRAP_EOF'
+#!/usr/bin/env bash
+# ---------------------------------------------------------------------------
+# OpenCode in-container bootstrap (embedded above; rendered by OpenTofu).
+# Idempotent: guarded by the /root/.bootstrapped marker.
+# ---------------------------------------------------------------------------
+set -euo pipefail
+
+# The hook runs us without a login environment; the OpenCode installer needs HOME.
+export HOME=/root
+
+LOG=/var/log/opencode-bootstrap.log
+exec >>"$LOG" 2>&1
+echo "=== bootstrap start: $(date -Is) ==="
+
+export DEBIAN_FRONTEND=noninteractive
+
+# 1) Allow root SSH login with a password.
+mkdir -p /etc/ssh/sshd_config.d
+cat > /etc/ssh/sshd_config.d/99-opencode.conf <<'EOF'
+PermitRootLogin yes
+PasswordAuthentication yes
+EOF
+systemctl restart ssh 2>/dev/null || systemctl restart sshd 2>/dev/null || true
+
+# 2) Base packages.
+apt-get update -y
+apt-get install -y --no-install-recommends curl ca-certificates nftables
+
+# 3) Install OpenCode v2 (latest, no pinning) -> /root/.opencode/bin/opencode
+#    The version-metadata endpoint is occasionally flaky (HTTP 500), so retry.
+set +u
+install_ok=0
+for attempt in 1 2 3 4 5 6 7 8; do
+  if curl -fsSL https://opencode.ai/v2/install | bash; then
+    install_ok=1
+    break
+  fi
+  echo "opencode install attempt $attempt failed; retrying in 5s"
+  sleep 5
+done
+set -u
+if [ "$install_ok" != "1" ]; then
+  echo "opencode install failed after retries"
+  exit 1
+fi
+
+# 4) systemd service.
+cat > /etc/systemd/system/opencode.service <<'EOF'
+[Unit]
+Description=OpenCode v2 server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=HOME=/root
+Environment=OPENCODE_PASSWORD=${opencode_password}
+ExecStart=/root/.opencode/bin/opencode serve --hostname 0.0.0.0 --port ${opencode_port}
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable --now opencode.service
+
+# 5) Firewall: allow the LAN to the OpenCode port; default-drop input.
+cat > /etc/nftables.conf <<'EOF'
+#!/usr/sbin/nft -f
+flush ruleset
+table inet filter {
+  chain input {
+    type filter hook input priority 0; policy drop;
+    iif "lo" accept
+    ct state established,related accept
+    ip protocol icmp accept
+    ip saddr ${lan_cidr} tcp dport 22 accept
+    ip saddr ${lan_cidr} tcp dport ${opencode_port} accept
+  }
+  chain forward { type filter hook forward priority 0; policy drop; }
+  chain output { type filter hook output priority 0; policy accept; }
+}
+EOF
+systemctl enable --now nftables
+nft -f /etc/nftables.conf || true
+
+# 6) Project directory sanity (the dedicated volume is mounted here).
+mkdir -p /projects
+
+# 7) Marker.
+touch /root/.bootstrapped
+echo "=== bootstrap end: $(date -Is) ==="
+OPENCODE_BOOTSTRAP_EOF
+then
+  log "delivery failed"
+  exit 1
+fi
+
+log "executing bootstrap"
+if ! lxc-attach -n "$VMID" -- /root/opencode-bootstrap.sh >>"$LOG" 2>&1; then
+  log "bootstrap FAILED"
+  exit 1
+fi
+
+log "bootstrap OK"
+exit 0

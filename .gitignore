@@ -1,0 +1,27 @@
+# OpenTofu / Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+# Saved plans store variable values (including secrets) in plaintext
+*.tfplan
+*.tfplan.json
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Secrets
+terraform.tfvars
+*.auto.tfvars
+!terraform.tfvars.example
+.env
+.env.local
+
+# Rendered pre-staged hookscript (contains the OpenCode password)
+prestage/
+
+# Editors / OS
+.DS_Store
+*.swp
