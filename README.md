@@ -38,10 +38,19 @@ tofu output
 ├─ deploy.sh                        # non-interactive end-to-end run of the steps below
 ├─ configure.sh                     # interactive wizard that writes terraform.tfvars
 ├─ versions.tf / provider.tf / variables.tf / main.tf / outputs.tf
+├─ .terraform.lock.hcl              # pinned provider versions + checksums (committed on purpose)
 ├─ terraform.tfvars.example
 ├─ LICENSE
 └─ .gitignore / .gitattributes
 ```
+
+One generated file is **deliberately kept in git**: `.terraform.lock.hcl`,
+OpenTofu's dependency lock file. It records the exact provider versions
+(`bpg/proxmox`, `hashicorp/local`) and their checksums that `tofu init`
+installed, so every clone downloads the *same* provider builds and verifies
+their integrity. Without it, `tofu init` would re-resolve the newest allowed
+version on each run and could silently change behavior. It contains no secrets —
+just versions and hashes.
 
 ## Prerequisites
 
