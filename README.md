@@ -8,24 +8,19 @@ The entire in-container configuration lives in one self-contained
 `snippets/hookscript.sh.tftpl` (host hook **+** embedded bootstrap), which is
 pre-staged on the node and run by Proxmox at container `post-start`.
 
-## Quick start
+## Usage
 
-```bash
-# 0. Prereqs: PVE root password; a snippets-capable storage; a Debian 12 LXC
-#    template (one-time, ~10 min).
-./configure.sh                                 # interactive: writes terraform.tfvars
-tofu init
+1. **`./configure.sh`** — interactive wizard. Asks for your PVE + container
+   values and the passwords, then writes `terraform.tfvars`; it creates nothing
+   and makes no network calls.
+2. **`./deploy.sh`** — reads `terraform.tfvars` and builds the container end to
+   end (`tofu init` → render → pre-stage → apply → verify).
 
-# 1. Render the hookscript and pre-stage it on the node ONCE:
-tofu apply -target=local_file.hookscript        # -> prestage/opencode-hookscript.sh
-#    paste it onto the node (web console) and chmod 0700 — see "Usage" below
-
-# 2. Deploy (API only — no SSH):
-tofu apply
-tofu output
-```
-
-> Prefer it unattended? `./deploy.sh` runs the whole flow end to end.
+> **Non-interactive:** `./deploy.sh` runs this whole flow (init → validate →
+> render → pre-stage → apply → verify) unattended. It reads the same
+> `TF_VAR_*` / `terraform.tfvars` inputs and aborts before any network action if
+> a secret is missing. Set `NO_SSH=1` to pre-stage via the web console instead of
+> the `scp` step. See the header comment in `deploy.sh` for overrides.
 
 ## Layout
 
@@ -93,28 +88,6 @@ export TF_VAR_ct_root_password="$(openssl rand -base64 18)"
 export TF_VAR_opencode_password="$(openssl rand -base64 18)"
 tofu apply
 ```
-
-## Usage
-
-Two scripts do the work, and they have different jobs:
-
-| Script | What it does | Network? |
-| --- | --- | --- |
-| `./configure.sh` | Asks for your values (PVE + container + passwords) and **writes `terraform.tfvars`**. Creates nothing. | No |
-| `./deploy.sh` | **Reads `terraform.tfvars`** and builds the container end to end (init → render → pre-stage → apply → verify). | Yes |
-
-So normally you just run them in order:
-
-```bash
-./configure.sh     # answer the questions -> terraform.tfvars
-./deploy.sh        # create the container from those values
-```
-
-> **Non-interactive:** `./deploy.sh` runs this whole flow (init → validate →
-> render → pre-stage → apply → verify) unattended. It reads the same
-> `TF_VAR_*` / `terraform.tfvars` inputs and aborts before any network action if
-> a secret is missing. Set `NO_SSH=1` to pre-stage via the web console instead of
-> the `scp` step. See the header comment in `deploy.sh` for overrides.
 
 ## Troubleshooting
 
