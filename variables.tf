@@ -11,7 +11,7 @@ variable "pve_username" {
 }
 
 variable "pve_password" {
-  description = "PVE host root password for pve_username (root@pam). Used for the Proxmox API connection only; the deployment needs no SSH. This is the ONE secret you must supply."
+  description = "PVE host root password for pve_username (root@pam). Used for the Proxmox API connection; the one-time snippet copy is done by deploy.sh over SSH. This is the ONE secret you must supply."
   type        = string
   sensitive   = true
 }

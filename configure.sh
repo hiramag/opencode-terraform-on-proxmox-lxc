@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ---------------------------------------------------------------------------
-# configure.sh — interactive wizard that writes terraform.tfvars.
+# configure.sh — interactive script that writes terraform.tfvars.
 #
 # Asks only for what you actually have to know:
 #   * the Proxmox connection (endpoint, node, root password)
@@ -13,7 +13,7 @@
 # which is gitignored. Re-run it any time; it will offer to overwrite.
 #
 # It does NOT create anything on Proxmox — that is deploy.sh's job, which reads
-# the terraform.tfvars this wizard writes.
+# the terraform.tfvars this script writes.
 # ---------------------------------------------------------------------------
 set -euo pipefail
 
@@ -97,7 +97,7 @@ hcl_escape() {
 # --- 0. existing file? -----------------------------------------------------
 if [ -e "$TFVARS" ]; then
   note "terraform.tfvars already exists"
-  info "This wizard will OVERWRITE it (current secrets will be replaced)."
+  info "This script will OVERWRITE it (current secrets will be replaced)."
   if ! ask_yn "Overwrite?"; then
     info "aborted — existing $TFVARS left untouched."
     exit 0
