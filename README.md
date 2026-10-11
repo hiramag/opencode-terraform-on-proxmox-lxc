@@ -7,7 +7,6 @@ Ansible, no separate configuration phase.
 The entire in-container configuration lives in one self-contained
 `snippets/hookscript.sh.tftpl` (host hook **+** embedded bootstrap), which is
 pre-staged on the node and run by Proxmox at container `post-start`.
-**No SSH to the Proxmox node is used** — the provider talks to the API only.
 
 ## Quick start
 
