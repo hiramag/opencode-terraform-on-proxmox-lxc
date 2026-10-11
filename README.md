@@ -29,7 +29,7 @@ pre-staged on the node and run by Proxmox at container `post-start`.
 ├─ snippets/hookscript.sh.tftpl     # host hook + in-container bootstrap (rendered by TF)
 ├─ prestage/opencode-hookscript.sh  # rendered hookscript, pre-staged on the node via scp (gitignored)
 ├─ deploy.sh                        # non-interactive end-to-end deploy
-├─ configure.sh                     # interactive wizard that writes terraform.tfvars
+├─ configure.sh                     # interactive script that writes terraform.tfvars
 ├─ versions.tf / provider.tf / variables.tf / main.tf / outputs.tf
 ├─ .terraform.lock.hcl              # pinned provider versions + checksums (committed on purpose)
 ├─ terraform.tfvars.example
@@ -60,7 +60,7 @@ just versions and hashes.
 ## Secrets — what to supply, and where
 
 **Everything goes in `terraform.tfvars`.** The easiest way to create it is the
-wizard, which asks for the required values and derives the gateway/DNS/firewall
+interactive script, which asks for the required values and derives the gateway/DNS/firewall
 range for you:
 
 ```bash
