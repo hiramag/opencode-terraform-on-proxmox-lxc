@@ -153,7 +153,7 @@ tofu output
 Deliberate trade-offs — know them before exposing this to a network:
 
 - **Root SSH with password** is enabled in the container
-  (`PermitRootLogin yes`, `PasswordAuthentication yes`), per the original spec.
+  (`PermitRootLogin yes`, `PasswordAuthentication yes`).
   For anything beyond a trusted LAN, switch to SSH keys and disable password
   auth in `snippets/hookscript.sh.tftpl`.
 - **`OPENCODE_PASSWORD` is cleartext** in the systemd unit
