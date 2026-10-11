@@ -49,6 +49,7 @@ just versions and hashes.
 
 - **Proxmox VE 8.x or 9.x** host reachable over HTTPS on `:8006`, and its
   **root password** (the provider authenticates the API as `root@pam` — API only).
+- **OpenTofu** (or Terraform v1.5+) installed on the machine you run this from.
 - **SSH access to that host** plus `sshpass` where you run `deploy.sh` — used
   only for the one-time `scp` that pre-stages the hookscript.
 - A rootfs datastore (`local-lvm`) and a template datastore (`local`).
