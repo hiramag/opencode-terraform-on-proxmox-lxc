@@ -16,19 +16,19 @@ pre-staged on the node and run by Proxmox at container `post-start`.
 2. **`./deploy.sh`** — reads `terraform.tfvars` and builds the container end to
    end (`tofu init` → render → pre-stage → apply → verify).
 
-> `./deploy.sh` runs this whole flow (init → validate →
-> render → pre-stage → apply → verify) unattended. It reads the same
-> `TF_VAR_*` / `terraform.tfvars` inputs and aborts before any network action if
-> a secret is missing. Set `NO_SSH=1` to pre-stage via the web console instead of
-> the `scp` step. See the header comment in `deploy.sh` for overrides.
+> `./deploy.sh` runs this whole flow (init → validate → render → pre-stage →
+> apply → verify) unattended. It reads the same `TF_VAR_*` / `terraform.tfvars`
+> inputs and aborts before any network action if a secret is missing. The
+> pre-stage step needs SSH to the PVE node (one `scp`, using `sshpass`); see the
+> header comment in `deploy.sh` for overrides.
 
 ## Layout
 
 ```
 .
 ├─ snippets/hookscript.sh.tftpl     # host hook + in-container bootstrap (rendered by TF)
-├─ prestage/opencode-hookscript.sh  # rendered output to paste onto the node (gitignored)
-├─ deploy.sh                        # non-interactive end-to-end run of the steps below
+├─ prestage/opencode-hookscript.sh  # rendered hookscript, pre-staged on the node via scp (gitignored)
+├─ deploy.sh                        # non-interactive end-to-end deploy
 ├─ configure.sh                     # interactive wizard that writes terraform.tfvars
 ├─ versions.tf / provider.tf / variables.tf / main.tf / outputs.tf
 ├─ .terraform.lock.hcl              # pinned provider versions + checksums (committed on purpose)
@@ -49,6 +49,8 @@ just versions and hashes.
 
 - **Proxmox VE 8.x or 9.x** host reachable over HTTPS on `:8006`, and its
   **root password** (the provider authenticates the API as `root@pam` — API only).
+- **SSH access to that host** plus `sshpass` where you run `deploy.sh` — used
+  only for the one-time `scp` that pre-stages the hookscript.
 - A rootfs datastore (`local-lvm`) and a template datastore (`local`).
 - **`snippets` content enabled** on the snippet datastore —
   `pvesm set <store> --content vztmpl,backup,iso,snippets`.
@@ -97,7 +99,7 @@ tofu apply
 | `changing the hookscript is only allowed for root@pam` | API **token** used → auth must be `root@pam` **password** |
 | `storage 'local' does not support content type 'snippets'` | snippets not enabled → `pvesm set <store> --content vztmpl,backup,iso,snippets` |
 | Container is up but `curl :4096` fails | bootstrap still running (cold ~60–90 s) or no internet from the CT → check `/var/log/opencode-bootstrap.log` inside it |
-| Hook never runs on restart | idempotency marker `/root/.bootstrapped` is set; to re-run, edit the template → **re-render + re-paste** the snippet, then restart |
+| Hook never runs on restart | idempotency marker `/root/.bootstrapped` is set; to re-run, edit the template → **re-render + re-stage** the snippet, then restart |
 | Odd `lxc-attach` / `pct` failures from the hook | the hook runs on the node via `lxc-attach`; check `/var/log/opencode-bootstrap.log` in the container |
 | A password showed up in a log | `TF_LOG=DEBUG/TRACE` was set → don't; rotate the password |
 

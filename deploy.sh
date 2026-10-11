@@ -2,11 +2,10 @@
 # ---------------------------------------------------------------------------
 # deploy.sh — end-to-end deploy of the OpenCode LXC.
 #
-# Reproduces the manual runbook (README.md "Usage"):
+# Runs the deploy documented in README.md "Usage":
 #   1. tofu init / validate
 #   2. render the hookscript locally            (local_file.hookscript)
-#   3. pre-stage the hookscript on the PVE node (one scp — the documented
-#      manual step; the deployment toolchain itself stays API-only)
+#   3. pre-stage the hookscript on the PVE node (one scp over SSH)
 #   4. tofu apply — creates the container; the bootstrap runs at post-start
 #   5. verify OpenCode answers HTTP 200 on the container
 #
@@ -20,8 +19,6 @@
 #                                   (default: derived from pve_endpoint)
 #   PVE_NODE_USER=root
 #   SNIP_DIR=/var/lib/vz/snippets   dir backing the 'snippets' datastore
-#   NO_SSH=1                        skip the scp; paste the snippet via the
-#                                   Proxmox web console instead
 #
 # Gotchas baked in (learned during the build):
 #   * always run from the repo — the script cd's there itself;
@@ -47,7 +44,7 @@ read_tfvar() {
 
 # Proxmox host for the one-time snippet scp (step 3). Honour an explicit
 # PVE_NODE, otherwise derive it from pve_endpoint in terraform.tfvars
-# (https://10.10.10.8:8006/ -> 10.10.10.8). Unused when NO_SSH=1.
+# (https://10.10.10.8:8006/ -> 10.10.10.8).
 if [ -z "${PVE_NODE:-}" ]; then
   PVE_NODE="$(read_tfvar pve_endpoint 2>/dev/null | sed -E 's#^https?://##; s#[:/].*$##' || true)"
 fi
@@ -77,10 +74,8 @@ done
 # The one-time snippet scp (step 3) needs the PVE password in the clear.
 PVE_PW="${TF_VAR_pve_password:-$(read_tfvar pve_password || true)}"
 [ -n "$PVE_PW" ] || die "could not determine pve_password (env or terraform.tfvars)"
-if [ "${NO_SSH:-0}" != "1" ]; then
-  command -v sshpass >/dev/null || die "sshpass not found (needed for the snippet scp); set NO_SSH=1 to paste by hand"
-  [ -n "$PVE_NODE" ] || die "no Proxmox host: set PVE_NODE=<host> or add pve_endpoint to terraform.tfvars (or set NO_SSH=1)"
-fi
+command -v sshpass >/dev/null || die "sshpass not found (needed for the snippet scp)"
+[ -n "$PVE_NODE" ] || die "no Proxmox host: set PVE_NODE=<host> or add pve_endpoint to terraform.tfvars"
 
 # --- 1. init + validate (registry only, no node contact) -------------------
 note "1. tofu init + validate"
@@ -92,21 +87,15 @@ note "2. render hookscript locally"
 tofu apply -auto-approve -no-color -target=local_file.hookscript
 [ -s "prestage/$SNIPPET" ] || die "prestage/$SNIPPET was not rendered"
 
-# --- 3. pre-stage the hookscript on the node (one-time manual step) --------
+# --- 3. pre-stage the hookscript on the node (one scp over SSH) ------------
 note "3. pre-stage hookscript on the node"
-if [ "${NO_SSH:-0}" = "1" ]; then
-  printf '  NO_SSH=1: paste %s/prestage/%s onto the node as %s/%s (chmod 0700)\n' \
-    "$REPO_DIR" "$SNIPPET" "$SNIP_DIR" "$SNIPPET"
-  read -r -p "  press Enter when it is in place... " _
-else
-  export SSHPASS="$PVE_PW"   # keep the password out of argv (ps)
-  sshpass -e ssh -o StrictHostKeyChecking=accept-new "$PVE_NODE_USER@$PVE_NODE" "mkdir -p '$SNIP_DIR'"
-  sshpass -e scp -o StrictHostKeyChecking=accept-new "prestage/$SNIPPET" \
-    "$PVE_NODE_USER@$PVE_NODE:$SNIP_DIR/$SNIPPET"
-  sshpass -e ssh -o StrictHostKeyChecking=accept-new "$PVE_NODE_USER@$PVE_NODE" \
-    "chmod 0700 '$SNIP_DIR/$SNIPPET'"
-  unset SSHPASS
-fi
+export SSHPASS="$PVE_PW"   # keep the password out of argv (ps)
+sshpass -e ssh -o StrictHostKeyChecking=accept-new "$PVE_NODE_USER@$PVE_NODE" "mkdir -p '$SNIP_DIR'"
+sshpass -e scp -o StrictHostKeyChecking=accept-new "prestage/$SNIPPET" \
+  "$PVE_NODE_USER@$PVE_NODE:$SNIP_DIR/$SNIPPET"
+sshpass -e ssh -o StrictHostKeyChecking=accept-new "$PVE_NODE_USER@$PVE_NODE" \
+  "chmod 0700 '$SNIP_DIR/$SNIPPET'"
+unset SSHPASS
 
 # --- 4. deploy (API only) --------------------------------------------------
 note "4. tofu apply (API only; bootstrap runs at post-start, ~60-90s cold)"

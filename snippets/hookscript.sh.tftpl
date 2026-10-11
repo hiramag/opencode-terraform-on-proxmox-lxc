@@ -10,12 +10,12 @@
 #
 # It is deliberately NOT uploaded by OpenTofu. The Proxmox API cannot write to
 # a "snippets" datastore, so Terraform would otherwise need SSH just to place
-# this file. Instead it is pre-staged on the node ONCE via the Proxmox web
-# console (no SSH), and referenced by ID from the container resource.
+# this file. Instead deploy.sh pre-stages it on the node ONCE via scp, and the
+# container resource references it by ID.
 #
-# Pre-stage on the PVE node (Datacenter > node > Shell):
+# Pre-stage on the PVE node:
 #   mkdir -p /var/lib/vz/snippets
-#   cat > /var/lib/vz/snippets/opencode-hookscript.sh    # paste, then Ctrl-D
+#   scp prestage/opencode-hookscript.sh root@<node>:/var/lib/vz/snippets/
 #   chmod 0700 /var/lib/vz/snippets/opencode-hookscript.sh
 #
 # Proxmox invokes it as:  hookscript.sh <vmid> <phase>

@@ -2,12 +2,12 @@
 # Hookscript (pre-staged on the node, NOT uploaded by OpenTofu).
 #
 # The Proxmox API cannot write to a 'snippets' datastore, so the provider would
-# need SSH purely to place this file. To keep the toolchain SSH-free, the
-# hookscript is pre-staged on the node ONCE (via the Proxmox web console) and
-# referenced by ID below. OpenTofu still renders the pasteable file locally so
-# it stays in sync with the current variables.
+# need SSH purely to place this file. Instead the provider stays API-only: the
+# hookscript is pre-staged on the node ONCE by deploy.sh (one scp) and referenced
+# by ID below. OpenTofu renders the file locally so it stays in sync with the
+# current variables.
 #
-# Pre-staging is a deliberate one-time manual step; see README.md ("Usage").
+# Pre-staging is a one-time step that deploy.sh performs; see README.md ("Usage").
 # ---------------------------------------------------------------------------
 locals {
   # Volume ID of the pre-staged hookscript (datastore:snippets/<filename>).
@@ -21,8 +21,8 @@ locals {
   })
 }
 
-# Materialise the hookscript locally so the operator can paste it into the PVE
-# web console. Mode 0700 because Proxmox requires hook scripts to be executable.
+# Materialise the hookscript locally so deploy.sh can pre-stage it on the node.
+# Mode 0700 because Proxmox requires hook scripts to be executable.
 # Gitignored: it embeds the OpenCode password.
 resource "local_file" "hookscript" {
   filename        = "${path.module}/prestage/opencode-hookscript.sh"

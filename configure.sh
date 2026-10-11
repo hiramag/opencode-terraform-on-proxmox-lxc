@@ -224,5 +224,4 @@ info "gateway   : $CT_GATEWAY    DNS: $CT_DNS    LAN: $LAN_CIDR"
 
 printf '\nNext:\n'
 printf '  ./deploy.sh                 # full unattended deploy\n'
-printf '  or: tofu init && tofu apply # and paste the snippet first (see README)\n'
-printf '\nNote: keep the container IP OUTSIDE your router DHCP pool (see docs/plan.md).\n'
+printf '\nNote: keep the container IP OUTSIDE your router DHCP pool.\n'
