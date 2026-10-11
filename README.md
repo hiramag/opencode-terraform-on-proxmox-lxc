@@ -110,26 +110,6 @@ So normally you just run them in order:
 ./deploy.sh        # create the container from those values
 ```
 
-Or do the steps by hand:
-
-```bash
-./configure.sh                                 # writes terraform.tfvars; or copy
-                                               # terraform.tfvars.example by hand
-tofu init
-
-# 1) Render the hookscript and pre-stage it on the node (one-time):
-tofu apply -target=local_file.hookscript
-#    -> writes prestage/opencode-hookscript.sh
-#    Paste it onto the node via the Proxmox web console:
-#      mkdir -p /var/lib/vz/snippets
-#      cat > /var/lib/vz/snippets/opencode-hookscript.sh   # paste, then Ctrl-D
-#      chmod 0700 /var/lib/vz/snippets/opencode-hookscript.sh
-
-# 2) Deploy (API only — no SSH):
-tofu apply
-tofu output
-```
-
 > **Non-interactive:** `./deploy.sh` runs this whole flow (init → validate →
 > render → pre-stage → apply → verify) unattended. It reads the same
 > `TF_VAR_*` / `terraform.tfvars` inputs and aborts before any network action if
