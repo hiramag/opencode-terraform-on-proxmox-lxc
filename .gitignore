@@ -26,6 +26,9 @@ prestage/
 # Internal docs (kept local, not published)
 docs/
 
+# Project notes (kept local, not published)
+journey.md
+
 # Editors / OS
 .DS_Store
 *.swp
