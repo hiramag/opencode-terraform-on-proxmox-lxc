@@ -1,4 +1,4 @@
-# OpenCode LXC
+# Opencode LXC via Terraform + hookscripts
 
 A **single-layer OpenTofu** project that creates a Debian 12 **LXC container**
 on Proxmox VE and fully configures a self-hosted **OpenCode v2** server — no
