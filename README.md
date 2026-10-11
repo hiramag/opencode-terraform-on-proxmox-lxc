@@ -71,7 +71,7 @@ Prefer to do it by hand? `cp terraform.tfvars.example terraform.tfvars` and edit
 
 | Variable in `terraform.tfvars` | What it is | Who supplies it |
 | --- | --- | --- |
-| `pve_password` | PVE host **root password** — API auth as `root@pam` (API only; no SSH) | **You** — the *only* value you must provide |
+| `pve_password` | PVE host **root password** — authenticates the API as `root@pam`, and the one-time snippet `scp` | **You** — the *only* value you must provide |
 | `ct_root_password` | Root password for the new container | You choose (or generate) |
 | `opencode_password` | Password for the OpenCode service | You choose (or generate) |
 
@@ -102,6 +102,20 @@ tofu apply
 | Hook never runs on restart | idempotency marker `/root/.bootstrapped` is set; to re-run, edit the template → **re-render + re-stage** the snippet, then restart |
 | Odd `lxc-attach` / `pct` failures from the hook | the hook runs on the node via `lxc-attach`; check `/var/log/opencode-bootstrap.log` in the container |
 | A password showed up in a log | `TF_LOG=DEBUG/TRACE` was set → don't; rotate the password |
+| No SSH to the node (`scp` fails / port 22 blocked) | pre-stage the snippet by hand via the Proxmox **web console** — see below |
+
+If you can't reach the node over SSH, pre-stage the hookscript through the
+Proxmox **web console** instead (select the node → **Shell**), then apply:
+
+```bash
+tofu apply -target=local_file.hookscript        # render prestage/opencode-hookscript.sh
+# in the node's web shell:
+#   mkdir -p /var/lib/vz/snippets
+#   cat > /var/lib/vz/snippets/opencode-hookscript.sh   # paste, then Ctrl-D
+#   chmod 0700 /var/lib/vz/snippets/opencode-hookscript.sh
+tofu apply
+tofu output
+```
 
 ## Security considerations
 
