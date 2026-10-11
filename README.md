@@ -56,8 +56,7 @@ just versions and hashes.
   **root password** (the provider authenticates the API as `root@pam` — API only).
 - A rootfs datastore (`local-lvm`) and a template datastore (`local`).
 - **`snippets` content enabled** on the snippet datastore —
-  `pvesm set <store> --content vztmpl,backup,iso,snippets`. *Not enabled by
-  default on many hosts.*
+  `pvesm set <store> --content vztmpl,backup,iso,snippets`.
 - **A way to place one file on the node, once** — e.g. the Proxmox **web
   console** (browser xterm, no SSH). Used to pre-stage the hookscript.
 - A Debian 12 LXC template (e.g. `local:vztmpl/debian-12-standard_*.tar.zst`).
