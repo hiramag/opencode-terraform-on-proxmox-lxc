@@ -10,13 +10,13 @@ pre-staged on the node and run by Proxmox at container `post-start`.
 
 ## Usage
 
-1. **`./configure.sh`** — interactive wizard. Asks for your PVE + container
-   values and the passwords, then writes `terraform.tfvars`; it creates nothing
-   and makes no network calls.
+1. **`./configure.sh`** — asks for your PVE + container values and the
+   passwords, then writes `terraform.tfvars`; it creates nothing and makes no
+   network calls.
 2. **`./deploy.sh`** — reads `terraform.tfvars` and builds the container end to
    end (`tofu init` → render → pre-stage → apply → verify).
 
-> **Non-interactive:** `./deploy.sh` runs this whole flow (init → validate →
+> `./deploy.sh` runs this whole flow (init → validate →
 > render → pre-stage → apply → verify) unattended. It reads the same
 > `TF_VAR_*` / `terraform.tfvars` inputs and aborts before any network action if
 > a secret is missing. Set `NO_SSH=1` to pre-stage via the web console instead of
