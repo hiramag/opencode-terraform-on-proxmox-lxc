@@ -159,7 +159,7 @@ Deliberate trade-offs — know them before exposing this to a network:
 - **`OPENCODE_PASSWORD` is cleartext** in the systemd unit
   (`/etc/systemd/system/opencode.service`, world-readable). Prefer a mode-`0600`
   `EnvironmentFile` if that matters to you.
-- **`pve_password` is a powerful secret.** Keep `terraform.tfvars` `chmod 600`;
+- **`pve_password`.** Keep `terraform.tfvars` `chmod 600`;
   never enable `TF_LOG`; and note that both it (as the API credential) and
   `ct_root_password` land in the OpenTofu **state** file in plaintext. Keep
   `terraform.tfstate` and `prestage/` root-only, and delete them when done.
