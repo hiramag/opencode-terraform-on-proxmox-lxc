@@ -7,8 +7,7 @@ Ansible, no separate configuration phase.
 The entire in-container configuration lives in one self-contained
 `snippets/hookscript.sh.tftpl` (host hook **+** embedded bootstrap), which is
 pre-staged on the node and run by Proxmox at container `post-start`.
-**No SSH to the Proxmox node is used** — the provider talks to the API only
-(see *No-SSH deployment* below).
+**No SSH to the Proxmox node is used** — the provider talks to the API only.
 
 ## Quick start
 
@@ -140,25 +139,6 @@ tofu output
 > `TF_VAR_*` / `terraform.tfvars` inputs and aborts before any network action if
 > a secret is missing. Set `NO_SSH=1` to pre-stage via the web console instead of
 > the `scp` step. See the header comment in `deploy.sh` for overrides.
-
-## No-SSH deployment
-
-The Proxmox **API** cannot write to a `snippets` datastore (its upload endpoint
-accepts only `iso`, `vztmpl`, `import`), so any toolchain that *uploads* the
-hookscript is forced onto **SSH**. This project avoids that entirely:
-
-1. OpenTofu renders the hookscript locally to `prestage/opencode-hookscript.sh`
-   (`tofu apply -target=local_file.hookscript`, or just `tofu apply`).
-2. You paste it onto the node **once** via the Proxmox **web console** (browser
-   xterm — no SSH) and `chmod 0700`.
-3. `tofu apply` references it by ID (`local:snippets/opencode-hookscript.sh`)
-   and manages the container over the **API only**.
-
-Re-do steps 1–2 only when you change the hookscript/bootstrap or
-`opencode_password` (the rendered file embeds it).
-
-> Verified: `tofu apply` succeeds even with the provider's SSH pointed at a
-> closed port — i.e. it makes **zero** SSH connections.
 
 ## Troubleshooting
 

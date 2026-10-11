@@ -7,8 +7,7 @@
 # referenced by ID below. OpenTofu still renders the pasteable file locally so
 # it stays in sync with the current variables.
 #
-# Pre-staging is a deliberate one-time manual step; see README.md
-# ("No-SSH deployment").
+# Pre-staging is a deliberate one-time manual step; see README.md ("Usage").
 # ---------------------------------------------------------------------------
 locals {
   # Volume ID of the pre-staged hookscript (datastore:snippets/<filename>).

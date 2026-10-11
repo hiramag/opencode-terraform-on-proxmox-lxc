@@ -2,7 +2,7 @@
 # ---------------------------------------------------------------------------
 # deploy.sh — end-to-end deploy of the OpenCode LXC.
 #
-# Reproduces the manual runbook (README.md "Usage" + "No-SSH deployment"):
+# Reproduces the manual runbook (README.md "Usage"):
 #   1. tofu init / validate
 #   2. render the hookscript locally            (local_file.hookscript)
 #   3. pre-stage the hookscript on the PVE node (one scp — the documented

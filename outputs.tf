@@ -10,6 +10,6 @@ output "containers" {
 }
 
 output "hookscript_prestage_file" {
-  description = "Local file to pre-stage on the PVE node before apply (see README: No-SSH deployment)."
+  description = "Local file to pre-stage on the PVE node before apply (see README: Usage)."
   value       = local_file.hookscript.filename
 }
